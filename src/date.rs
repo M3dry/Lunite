@@ -9,8 +9,10 @@ pub struct Due {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub end: Option<i64>,
     pub only_date: bool,
+    /// Repeat log, stores unix timestamps
     #[serde(skip_serializing_if = "Option::is_none")]
     pub repeat: Option<Vec<i64>>,
+    /// Stores repeat increments - hour, day, week, month
     #[serde(skip_serializing_if = "Option::is_none")]
     pub repeat_step: Option<Vec<i32>>,
 }
@@ -43,7 +45,6 @@ impl Display for Due {
             repeat = match &self.repeat_step {
                 Some(repeat_step) => {
                     format!(" - {}", repeat_step.iter().enumerate().filter_map(|(i, r)| {
-                        if *r != 0 {
                             Some(format!("{}{}", r, match i {
                                 0 => "h",
                                 1 => "d",
@@ -51,9 +52,6 @@ impl Display for Due {
                                 3 => "m",
                                 x => panic!("{x} how?"),
                             }))
-                        } else {
-                            None
-                        }
                     }).collect::<Vec<String>>().join(""))
                 }
                 None => format!(""),

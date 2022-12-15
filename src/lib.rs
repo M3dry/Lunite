@@ -331,16 +331,12 @@ impl Task {
     pub fn reset_on_done(mut self, reset: Reset) -> Self {
         self.reset_on_done = reset;
         if let Some(due) = &mut self.due {
-            if let Some(_) = due.repeat {
+            if due.repeat != None {
                 due.repeat = None;
                 due.repeat_step = None;
             }
         }
         self
-    }
-
-    pub fn subtasks_done(&self) -> bool {
-        todo!()
     }
 
     pub fn done(&mut self) -> Result<(), String> {
@@ -354,6 +350,7 @@ impl Task {
                 }
             }
             Done::Done => Done::Undone,
+            Done::SubDone => Done::SubUndone,
             _ => return Err(String::from("Err: Taks has subtasks")),
         };
 
@@ -362,6 +359,9 @@ impl Task {
 
     pub fn add_subtask(&mut self, mut task: Task) {
         task.reset_on_done = Reset::NotRoot;
+        if matches!(task.done, Done::Done | Done::SubDone) {
+            task.done();
+        }
         self.subtasks.push(task);
         sort(&mut self.subtasks);
     }
@@ -438,7 +438,7 @@ impl Task {
 
         Err(String::from("Err: Idx out of bounds"))
     }
-    ///
+
     /// 1 based idx
     pub fn nth_task_mut(&mut self, idx: usize) -> Result<&mut Task, String> {
         fn iter(task: &mut Task, idx: usize) -> Option<&mut Task> {
@@ -791,7 +791,6 @@ impl Profile {
                             subs = std::mem::replace(&mut task.subtasks, vec![]);
                         }
                         if subs.is_empty() {
-                            println!("Hello");
                             tasks.remove(i);
                         }
                         break 'f;
@@ -805,12 +804,12 @@ impl Profile {
                             };
                             break 'f;
                         }
-                        (false, subs) => subs.unwrap(),
+                        _ => vec![],
                     };
                 }
             }
 
-            if preserve_subs && !subs.is_empty() {
+            if preserve_subs {
                 let root = match self.nth_task_mut(match self.root_nth_task_idx(*idx) {
                     Ok(idx) => idx,
                     Err(_) => continue,
@@ -863,9 +862,10 @@ impl Profile {
     /// 1 based idx
     pub fn add_subtask(&mut self, mut task: Task, master_idx: usize) -> Result<(), String> {
         task.reset_on_done = Reset::NotRoot;
-        let ret = self
-            .nth_task_mut(master_idx)
-            .map(|master| master.subtasks.push(task));
+        let ret = self.nth_task_mut(master_idx).map(|master| {
+            master.done();
+            master.subtasks.push(task)
+        });
         self.order();
         ret
     }
@@ -1226,8 +1226,8 @@ fn sort(tasks: &mut Vec<Task>) {
         (
             b.overdue
                 ^ match a.done {
-                    Done::Done => true,
-                    Done::Undone | Done::SubDone | Done::SubUndone => false,
+                    Done::Done | Done::SubDone => true,
+                    Done::Undone | Done::SubUndone => false,
                 },
             &b.due,
             b.priority,
@@ -1235,8 +1235,8 @@ fn sort(tasks: &mut Vec<Task>) {
             .cmp(&(
                 a.overdue
                     ^ match b.done {
-                        Done::Done => true,
-                        Done::Undone | Done::SubDone | Done::SubUndone => false,
+                        Done::Done | Done::SubDone => true,
+                        Done::Undone | Done::SubUndone => false,
                     },
                 &a.due,
                 a.priority,
