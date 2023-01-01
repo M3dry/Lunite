@@ -113,6 +113,7 @@ struct TaskFmt<'a> {
 }
 
 impl<'a> TaskFmt<'a> {
+    /// @hello today
     fn indent(&self) -> usize {
         self.indent * self.level
     }
@@ -345,12 +346,18 @@ impl Task {
                 if let Reset::Yes(log) = &mut self.reset_on_done {
                     log.push(date::timestamp());
                     Done::Undone
+                } else if let Some(due) = &mut self.due {
+                    if due.repeat != None {
+                        due.done();
+                        Done::Undone
+                    } else {
+                        Done::Done
+                    }
                 } else {
                     Done::Done
                 }
             }
             Done::Done => Done::Undone,
-            Done::SubDone => Done::SubUndone,
             _ => return Err(String::from("Err: Taks has subtasks")),
         };
 
@@ -402,7 +409,7 @@ impl Task {
                 indent,
                 level,
                 subtasks,
-                logs,
+                logs
             }
         )
     }
@@ -993,8 +1000,9 @@ impl Profile {
         fn change_overdue(task: &mut Task) {
             match &task.due {
                 Some(time) if time.is_overdue() && task.done != Done::Done => task.overdue = true,
+                Some(time) => task.overdue = false,
                 None if task.overdue => task.overdue = false,
-                _ => (),
+                _ => ()
             }
         }
         let mut idx = 1;

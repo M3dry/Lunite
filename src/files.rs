@@ -1,11 +1,11 @@
 use std::{io::Write, path::PathBuf};
 
-use lunite::{Profile, Task};
+use lunite::{Profiles, Task};
 
 const DEFAULT_GLOBAL_TASKS: &str = r#"{"profiles":[{"name": "Default"}],"current":1}"#;
 const DEFAULT_LOCAL_TASKS: &str = r#"[]"#;
 
-pub fn get_profiles() -> Profile {
+pub fn get_profiles() -> (Profiles, PathBuf) {
     let path = xdg::BaseDirectories::with_prefix("lunite")
         .unwrap()
         .place_data_file("lunite.json")
@@ -20,7 +20,7 @@ pub fn get_profiles() -> Profile {
         .unwrap();
     }
 
-    serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+    (serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap(), path)
 }
 
 pub fn get_local_tasks(create: bool) -> std::io::Result<(Vec<Task>, PathBuf)> {

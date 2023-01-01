@@ -19,23 +19,37 @@ pub fn args(args: &[String]) {
 
     match args_len {
         0 => local.show(ShowMethod::All),
-        _ if args[0] == "rm" => {
-            let mut iter = args[1..].iter();
-            let mut ids = vec![];
-            let mut force = false;
-            while let Some(id) = iter.next() {
-                if let Ok(id) = id.parse::<usize>() {
-                    ids.push(id)
-                } else if id == "f" {
-                    local.profile.remove_nth_task(&ids, !force, false);
-                    force = true
+        2.. if args[0] == "rm" || args[0] == "remove" => {
+            if args[1] == "done" {
+                local.profile.remove_done();
+                local.save()
+            } else {
+                let mut iter = args[1..].iter();
+                let mut ids = vec![];
+                let mut force = false;
+                while let Some(id) = iter.next() {
+                    if let Ok(id) = id.parse::<usize>() {
+                        ids.push(id)
+                    } else if id == "f" {
+                        local.profile.remove_nth_task(&ids, !force, false);
+                        force = true
+                    }
+                    println!("{id:#?}")
                 }
-                println!("{id:#?}")
+                local.profile.remove_nth_task(&ids, !force, true);
+                local.save();
+                local.show(ShowMethod::All);
             }
-            local.profile.remove_nth_task(&ids, !force, false);
+        }
+        2.. if args[0] == "done" => {
+            args[1..]
+                .iter()
+                .filter_map(|a| a.parse().ok())
+                .for_each(|i| {
+                    local.profile.done(i);
+                });
             local.profile.order();
-            local.save();
-            local.show(ShowMethod::All);
+            local.save()
         }
         1 => match args[0].as_str() {
             "-v" | "--version" => todo!(),

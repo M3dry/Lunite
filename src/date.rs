@@ -44,15 +44,31 @@ impl Display for Due {
             },
             repeat = match &self.repeat_step {
                 Some(repeat_step) => {
-                    format!(" - {}", repeat_step.iter().enumerate().filter_map(|(i, r)| {
-                            Some(format!("{}{}", r, match i {
-                                0 => "h",
-                                1 => "d",
-                                2 => "w",
-                                3 => "m",
-                                x => panic!("{x} how?"),
-                            }))
-                    }).collect::<Vec<String>>().join(""))
+                    format!(
+                        " - {}",
+                        repeat_step
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(i, r)| {
+                                if *r == 0 {
+                                    None
+                                } else {
+                                    Some(format!(
+                                        "{}{}",
+                                        r,
+                                        match i {
+                                            0 => "h",
+                                            1 => "d",
+                                            2 => "w",
+                                            3 => "m",
+                                            x => panic!("{x} how?"),
+                                        }
+                                    ))
+                                }
+                            })
+                            .collect::<Vec<String>>()
+                            .join("")
+                    )
                 }
                 None => format!(""),
             }

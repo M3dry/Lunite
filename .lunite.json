@@ -1,63 +1,81 @@
 [
-    {
-        "name": "hello",
-        "description": "Hello to my task, that has subtodos, this is a test todo, I like foo bar baz",
-        "due": {
-            "start": 100,
-            "end": 200,
-            "only_date": false,
-            "repeat": [],
-            "repeat_step": [
-                5,
-                2,
-                0,
-                0
-            ]
-        },
-        "tags": [
-            "task",
-            "BFG"
-        ],
-        "reset_on_done": 1,
-        "done": 2,
-        "index": 1
+  {
+    "name": "hello",
+    "description": "Hello to my task, that has subtodos, this is a test todo, I like foo bar baz",
+    "due": {
+      "start": 1672743700,
+      "end": 1672743800,
+      "only_date": false,
+      "repeat": [
+        1672557242,
+        1672557452,
+        1672557489,
+        1672557528,
+        1672557548,
+        1672557829
+      ],
+      "repeat_step": [
+        5,
+        2,
+        0,
+        0
+      ]
     },
-    {
-        "name": "hello_1",
-        "description": "Hello to my task, that has subtodos, this is a test todo, I like foo bar baz",
-        "due": {
-            "start": 100,
-            "end": 200,
-            "only_date": false,
-            "repeat": [
-                0,
-                50,
-                100
-            ],
-            "repeat_step": [
-                5,
-                2,
-                0,
-                0
-            ]
-        },
-        "tags": [
-            "task",
-            "BFG"
-        ],
-        "reset_on_done": 1,
-        "done": 2,
-        "index": 2
+    "tags": [
+      "task",
+      "BFG"
+    ],
+    "reset_on_done": 1,
+    "done": 1,
+    "index": 1
+  },
+  {
+    "name": "hello_1",
+    "description": "Hello to my task, that has subtodos, this is a test todo, I like foo bar baz",
+    "due": {
+      "start": 1672743700,
+      "end": 1672743800,
+      "only_date": false,
+      "repeat": [
+        0,
+        50,
+        100,
+        1672557447
+      ],
+      "repeat_step": [
+        5,
+        2,
+        0,
+        0
+      ]
     },
-    {
-        "name": "hello_1_1",
-        "description": "Hello to my task, that has subtodos, this is a test todo, I like foo bar baz",
-        "tags": [
-            "task",
-            "BFG"
-        ],
-        "reset_on_done": [1111, 2222, 3333, 4444],
-        "done": 2,
-        "index": 3
-    }
+    "tags": [
+      "task",
+      "BFG"
+    ],
+    "reset_on_done": 1,
+    "done": 1,
+    "index": 2
+  },
+  {
+    "name": "hello_1_1",
+    "description": "Hello to my task, that has subtodos, this is a test todo, I like foo bar baz",
+    "tags": [
+      "task",
+      "BFG"
+    ],
+    "reset_on_done": [
+      1111,
+      2222,
+      3333,
+      4444,
+      1672557094,
+      1672557959,
+      1672557960,
+      1672558071,
+      1672558072
+    ],
+    "done": 1,
+    "index": 3
+  }
 ]
