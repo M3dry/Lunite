@@ -16,10 +16,30 @@ macro_rules! day_creation {
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
 pub enum PartOfDay {
     Morning,
-    Noon,
     Afternoon,
     Evening,
     Night,
+    Fixed(TimeRange),
+}
+
+impl PartOfDay {
+    pub fn fixed_from_part(&self) -> Result<Self, String> {
+        Ok(Self::Fixed(match self {
+            Self::Morning => {
+                TimeRange::new(NaiveTime::from_hms_opt(4, 0, 0).unwrap(), NaiveTime::from_hms_opt(12, 0, 0).unwrap())
+            }
+            Self::Afternoon => TimeRange::new(
+                NaiveTime::from_hms_opt(12, 0, 0).unwrap(),
+                NaiveTime::from_hms_opt(18, 0, 0).unwrap(),
+            ),
+            Self::Evening => TimeRange::new(
+                NaiveTime::from_hms_opt(18, 0, 0).unwrap(),
+                NaiveTime::from_hms_opt(21, 0, 0).unwrap(),
+            ),
+            Self::Night => TimeRange::new(NaiveTime::from_hms_opt(21, 0, 0).unwrap(), NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
+            _ => return Err(format!("Didn't expect Fixed")),
+        }))
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -569,6 +589,18 @@ impl TimeRange {
 
     pub fn to_duration(&self) -> Duration {
         self.end.signed_duration_since(self.start)
+    }
+}
+
+impl Ord for TimeRange {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.start.cmp(&other.start)
+    }
+}
+
+impl PartialOrd for TimeRange {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 
