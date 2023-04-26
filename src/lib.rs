@@ -1,4 +1,4 @@
-use chrono::{Datelike, Days, Duration, Local, NaiveDate, NaiveTime};
+use chrono::{Datelike, Days, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds};
 use uuid::Uuid;
@@ -7,6 +7,7 @@ macro_rules! day_creation {
     () => {
         Day {
             static_tasks: vec![],
+            static_done: vec![],
             dynamic_tasks: vec![],
         }
     };
@@ -41,6 +42,7 @@ pub struct Planner {
     config: Config,
     days: [Day; 7],
     dynamic_tasks: Vec<DynamicTask>,
+    dynamic_done: Vec<(DynamicTask, NaiveDateTime)>,
 }
 
 impl Planner {
@@ -57,6 +59,7 @@ impl Planner {
                 day_creation!(),
             ],
             dynamic_tasks: vec![],
+            dynamic_done: vec![],
         }
     }
 
@@ -109,15 +112,13 @@ impl Planner {
                                 };
 
                                 freetime[i] = Schedule::DynamicTask(task);
+                                let mut ii = i;
                                 if let Some(range) = first {
-                                    freetime.insert(i, Schedule::Free(range))
+                                    freetime.insert(i, Schedule::Free(range));
+                                    ii += 1;
                                 }
                                 if let Some(range) = second {
-                                    if freetime.len() > i + 2 {
-                                        freetime.insert(i + 2, Schedule::Free(range))
-                                    } else {
-                                        freetime.push(Schedule::Free(range))
-                                    }
+                                    freetime.insert(ii + 1, Schedule::Free(range))
                                 }
                                 break;
                             }
@@ -159,20 +160,14 @@ impl Planner {
                                         freetime[i] = Schedule::DynamicPart(
                                             task.fixed_split(&length, part).unwrap(),
                                         );
-                                        if freetime.len() > i + 2 {
-                                            freetime.insert(
-                                                i + 2,
-                                                Schedule::Free(TimeRange::new(
-                                                    free_range.start + length,
-                                                    free_range.end,
-                                                )),
-                                            )
-                                        } else {
-                                            freetime.push(Schedule::Free(TimeRange::new(
+                                        freetime.insert(
+                                            i + 1,
+                                            Schedule::Free(TimeRange::new(
                                                 free_range.start + length,
                                                 free_range.end,
-                                            )))
-                                        }
+                                            )),
+                                        );
+
                                         break;
                                     } else {
                                         freetime[i] = Schedule::DynamicPart(
@@ -182,7 +177,7 @@ impl Planner {
                                         part += 1;
                                     }
                                 } else {
-                                    panic!("this shouldn't happen")
+                                    unreachable!()
                                 }
                             }
                         } else {
@@ -197,26 +192,20 @@ impl Planner {
 
                     for i in 0..freetime.len() {
                         if let Schedule::Free(range) = &freetime[i] {
+                            let range = range.to_owned();
                             let duration = range.to_duration();
                             if duration >= *length {
+                                freetime[i] = Schedule::DynamicTask(task);
+
                                 if duration != *length {
-                                    if freetime.len() > i + 2 {
-                                        freetime.insert(
-                                            i + 2,
-                                            Schedule::Free(TimeRange::new(
-                                                range.start + *length,
-                                                range.end,
-                                            )),
-                                        )
-                                    } else {
-                                        freetime.push(Schedule::Free(TimeRange::new(
+                                    freetime.insert(
+                                        i + 1,
+                                        Schedule::Free(TimeRange::new(
                                             range.start + *length,
                                             range.end,
-                                        )))
-                                    }
+                                        )),
+                                    )
                                 }
-
-                                freetime[i] = Schedule::DynamicTask(task);
                                 break;
                             }
                         }
@@ -257,10 +246,29 @@ impl Planner {
 
         self.dynamic_tasks.push(task);
         self.dynamic_tasks.sort();
+        self.update_dynamics();
         Ok(())
     }
 
-    pub fn update_dynamics(&mut self) {
+    pub fn complete_dynamic(&mut self, task: usize) -> Result<(), String> {
+        if self.current_day_mut().dynamic_tasks.contains(&task) {
+            let dynamic_id = self.current_day_mut().dynamic_tasks.swap_remove(task);
+            let dynamic_task = self.dynamic_tasks.remove(dynamic_id);
+
+            self.dynamic_done
+                .push((dynamic_task, Local::now().naive_local()));
+            self.update_dynamics();
+
+            Ok(())
+        } else {
+            Err(format!(
+                "Expected task to be in current day dynamic tasks, got {:#?}",
+                self.current_day().dynamic_tasks
+            ))
+        }
+    }
+
+    fn update_dynamics(&mut self) {
         let mut current_date = Local::now().date_naive();
 
         for n in current()..7 {
@@ -284,6 +292,7 @@ impl Planner {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Day {
     static_tasks: Vec<StaticTask>,
+    static_done: Vec<(Uuid, NaiveDateTime)>,
     dynamic_tasks: Vec<usize>,
 }
 
@@ -293,11 +302,35 @@ impl Day {
         self.static_tasks.sort();
     }
 
+    pub fn complete_static(&mut self, task: usize) -> Result<(), String> {
+        if self.static_tasks.len() > task {
+            let StaticTask {
+                task: Task { uuid, .. },
+                ..
+            } = self.static_tasks[task];
+            self.static_done.push((uuid, Local::now().naive_local()));
+
+            Ok(())
+        } else {
+            Err(format!("There is no task at {task}"))
+        }
+    }
+
     pub fn get_freetime(&self, config: &Config) -> Vec<Schedule> {
         let times = self
             .static_tasks
             .iter()
-            .map(|task| (&task.time, task))
+            .filter_map(|task| {
+                let StaticTask {
+                    task: Task { uuid, .. },
+                    ..
+                } = &task;
+                if self.static_done.iter().all(|t| &t.0 != uuid) {
+                    Some((&task.time, task))
+                } else {
+                    None
+                }
+            })
             .collect::<Vec<(&TimeRange, &StaticTask)>>();
         let times_len = times.len();
         let mut free = vec![];
@@ -470,14 +503,10 @@ impl Ord for DynamicTask {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
             (Self::Flexible { date: date1, .. }, Self::Fixed { date: date2, .. })
-                if date1 > date2 =>
+            | (Self::Fixed { date: date2, .. }, Self::Flexible { date: date1, .. })
+                if date1 < date2 =>
             {
                 std::cmp::Ordering::Less
-            }
-            (Self::Fixed { date: date1, .. }, Self::Flexible { date: date2, .. })
-                if date1 > date2 =>
-            {
-                std::cmp::Ordering::Greater
             }
             (Self::Flexible { .. }, Self::Fixed { .. }) => std::cmp::Ordering::Greater,
             (Self::Fixed { .. }, Self::Flexible { .. }) => std::cmp::Ordering::Less,
